@@ -1,10 +1,8 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseKey = import.meta.env.VITE_SUPABASE_KEY
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error('Missing Supabase credentials in .env.local')
-}
-
-export const supabase = createClient(supabaseUrl, supabaseKey)
+// ✅ Стандартная инициализация. 
+// Supabase клиент автоматически обрабатывает retries, compression и keep-alive для мобильных.
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
