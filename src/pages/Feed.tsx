@@ -24,7 +24,6 @@ interface MemeCardProps {
   onShare: (url: string) => void;
 }
 
-// ✅ Мемоизированная карточка (не перерисовывается при изменении других мемов)
 const MemeCard = memo(({ meme, reaction, onReaction, onCopy, onShare }: MemeCardProps) => (
   <div style={{ marginBottom: 20, background: '#18181b', borderRadius: 20, overflow: 'hidden', border: '1px solid #27272a' }}>
     <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -87,14 +86,15 @@ export const Feed: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [userReactions, setUserReactions] = useState<Record<string, { liked: boolean; saved: boolean }>>({});
 
   const { copyToClipboard, openLink } = useVKBridge();
-  const { user, loading: authLoading } = useVKAuth();
+  const { user } = useVKAuth();
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
-  // ✅ IntersectionObserver вместо scroll-событий (в 10 раз быстрее)
+  // ✅ IntersectionObserver для бесконечного скролла
   useEffect(() => {
     if (!hasMore || loadingMore) return;
 
@@ -113,39 +113,60 @@ export const Feed: React.FC = () => {
   }, [hasMore, loadingMore, memes.length]);
 
   const fetchMemes = useCallback(async (reset = false) => {
-    if (reset) setLoading(true);
-    else setLoadingMore(true);
+    if (reset) {
+      setLoading(true);
+      setError(null);
+    } else {
+      setLoadingMore(true);
+    }
 
-    // ✅ Объявляем переменные пагинации
     const from = reset ? 0 : memes.length;
     const to = from + ITEMS_PER_PAGE - 1;
 
     try {
-      const { data, error } = await supabase
+      console.log('[Feed] Запрос мемов:', { from, to, reset });
+      
+      const { data, error: fetchError } = await supabase
         .from('memes_with_stats')
         .select()
         .order('created_at', { ascending: false })
-        .range(from, to); // ✅ Без .timeout()
+        .range(from, to);
 
-      if (error) throw error;
+      if (fetchError) {
+        console.error('[Feed] Ошибка Supabase:', fetchError);
+        throw fetchError;
+      }
+
+      console.log('[Feed] Получено данных:', data?.length);
 
       if (data) {
         const typed = data as MemeStats[];
         setMemes(prev => reset ? typed : [...prev, ...typed]);
         setHasMore(typed.length === ITEMS_PER_PAGE);
+        setError(null);
       }
-    } catch (err) {
-      console.error('Feed error:', err);
-      // Не блокируем интерфейс при ошибке сети — показываем то, что уже есть
+    } catch (err: any) {
+      console.error('[Feed] Critical error:', err);
+      setError(err.message || 'Не удалось загрузить ленту');
+      // При ошибке не очищаем существующие мемы
+      if (reset) {
+        setMemes([]);
+      }
     } finally {
-      // ✅ ГАРАНТИРОВАННО выключаем спиннер
+      // ✅ ВСЕГДА сбрасываем loading
+      console.log('[Feed] finally: сброс loading');
       setLoading(false);
       setLoadingMore(false);
     }
   }, [memes.length]);
 
-  useEffect(() => { fetchMemes(true); }, []);
+  // Initial load
+  useEffect(() => {
+    console.log('[Feed] Initial load, user:', user);
+    fetchMemes(true);
+  }, []);
 
+  // Load reactions when user changes
   useEffect(() => {
     if (user && memes.length > 0) {
       fetchUserReactions();
@@ -154,19 +175,23 @@ export const Feed: React.FC = () => {
 
   const fetchUserReactions = async () => {
     if (!user) return;
-    const { data } = await supabase
-      .from('reactions')
-      .select('meme_id, reaction_type')
-      .eq('user_id', user.id)
-      .in('meme_id', memes.map(m => m.id));
+    try {
+      const { data } = await supabase
+        .from('reactions')
+        .select('meme_id, reaction_type')
+        .eq('user_id', user.id)
+        .in('meme_id', memes.map(m => m.id));
 
-    if (data) {
-      const map: Record<string, { liked: boolean; saved: boolean }> = {};
-      memes.forEach(m => map[m.id] = { liked: false, saved: false });
-      data.forEach(r => {
-        if (map[r.meme_id]) map[r.meme_id][r.reaction_type === 'like' ? 'liked' : 'saved'] = true;
-      });
-      setUserReactions(map);
+      if (data) {
+        const map: Record<string, { liked: boolean; saved: boolean }> = {};
+        memes.forEach(m => map[m.id] = { liked: false, saved: false });
+        data.forEach(r => {
+          if (map[r.meme_id]) map[r.meme_id][r.reaction_type === 'like' ? 'liked' : 'saved'] = true;
+        });
+        setUserReactions(map);
+      }
+    } catch (err) {
+      console.error('[Feed] Error loading reactions:', err);
     }
   };
 
@@ -176,7 +201,6 @@ export const Feed: React.FC = () => {
     const stateKey = type === 'like' ? 'liked' : 'saved';
     const isAdding = !current[stateKey];
 
-    // Оптимистичное обновление
     setUserReactions(prev => ({ ...prev, [memeId]: { ...prev[memeId], [stateKey]: isAdding } }));
     setMemes(prev => prev.map(m => 
       m.id === memeId 
@@ -191,7 +215,7 @@ export const Feed: React.FC = () => {
         await supabase.from('reactions').delete().eq('user_id', user.id).eq('meme_id', memeId).eq('reaction_type', type);
       }
     } catch {
-      fetchUserReactions(); // Откат при ошибке сети
+      fetchUserReactions();
     }
   };
 
@@ -199,25 +223,67 @@ export const Feed: React.FC = () => {
     fetchMemes(true);
   };
 
-  if (authLoading || (loading && memes.length === 0)) {
-    return <div style={{ padding: 60, textAlign: 'center' }}><Spinner size="l" /></div>;
+  const handleRetry = () => {
+    console.log('[Feed] Retry clicked');
+    fetchMemes(true);
+  };
+
+  // ✅ Показываем ошибку, если загрузка не удалась
+  if (error && memes.length === 0) {
+    return (
+      <Group style={{ padding: 0 }}>
+        <div style={{ padding: 60, textAlign: 'center', background: '#0B0B0F', minHeight: '100vh' }}>
+          <div style={{ fontSize: 64, marginBottom: 16 }}>📡</div>
+          <div style={{ color: '#f4f4f5', fontSize: 18, fontWeight: 600, marginBottom: 8 }}>
+            Не удалось загрузить ленту
+          </div>
+          <div style={{ color: '#71717a', fontSize: 14, marginBottom: 24 }}>
+            {error}
+          </div>
+          <Button mode="primary" size="l" onClick={handleRetry}>
+            🔄 Попробовать снова
+          </Button>
+        </div>
+      </Group>
+    );
+  }
+
+  // ✅ Показываем спиннер только при первой загрузке
+  if (loading && memes.length === 0) {
+    return (
+      <Group style={{ padding: 0 }}>
+        <div style={{ padding: 60, textAlign: 'center', background: '#0B0B0F', minHeight: '100vh' }}>
+          <Spinner size="l" />
+          <div style={{ marginTop: 20, color: '#71717a', fontSize: 14 }}>
+            Загрузка ленты...
+          </div>
+        </div>
+      </Group>
+    );
   }
 
   return (
     <Group style={{ padding: 0 }}>
       <PullToRefresh onRefresh={handleRefresh}>
-        {memes.map(meme => (
-          <MemeCard
-            key={meme.id}
-            meme={meme}
-            reaction={userReactions[meme.id] || { liked: false, saved: false }}
-            onReaction={handleReaction}
-            onCopy={copyToClipboard}
-            onShare={openLink}
-          />
-        ))}
+        {memes.length === 0 ? (
+          <div style={{ padding: 60, textAlign: 'center', color: '#71717a' }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>📭</div>
+            <div>Лента пуста</div>
+            <div style={{ fontSize: 13, marginTop: 8 }}>Будь первым, кто загрузит мем!</div>
+          </div>
+        ) : (
+          memes.map(meme => (
+            <MemeCard
+              key={meme.id}
+              meme={meme}
+              reaction={userReactions[meme.id] || { liked: false, saved: false }}
+              onReaction={handleReaction}
+              onCopy={copyToClipboard}
+              onShare={openLink}
+            />
+          ))
+        )}
 
-        {/* Триггер для IntersectionObserver */}
         <div ref={loadMoreRef} style={{ height: 1 }} />
 
         {loadingMore && (
