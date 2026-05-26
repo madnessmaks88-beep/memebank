@@ -10,107 +10,53 @@ export interface Transaction {
 }
 
 export const useWallet = () => {
-  const { user } = useVKAuth();
-  const [balance, setBalance] = useState<number>(0);
+  const { user, loading: authLoading } = useVKAuth();
+  const [balance, setBalance] = useState(0);
   const [history, setHistory] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [dailyClaimReady, setDailyClaimReady] = useState(false);
 
-  // Функция загрузки данных кошелька
   const fetchWallet = useCallback(async () => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-
+    if (!user) { setLoading(false); return; }
+    
+    setLoading(true);
     try {
-      setLoading(true);
-      setError(null);
-
-      //  Запускаем запросы параллельно. 
-      // Promise.allSettled гарантирует, что ошибка одного не сломает другой.
-      const [walletRes, historyRes] = await Promise.allSettled([
-        supabase
-          .from('wallets')
-          .select('balance, last_daily_claim')
-          .eq('user_id', user.id)
-          .single(),
-        
-        supabase
-          .from('transactions')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(10)
+      const [wRes, hRes] = await Promise.allSettled([
+        supabase.from('wallets').select('balance, last_daily_claim').eq('user_id', user.id).single(),
+        supabase.from('transactions').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(10)
       ]);
 
-      // 📦 Обработка баланса
-      if (walletRes.status === 'fulfilled' && walletRes.value.data) {
-        const wallet = walletRes.value.data;
-        setBalance(wallet.balance ?? 0);
-
-        // Проверка: получен ли бонус сегодня?
-        const todayStart = new Date().setHours(0, 0, 0, 0);
-        const lastClaim = wallet.last_daily_claim
-          ? new Date(wallet.last_daily_claim).setHours(0, 0, 0, 0)
-          : 0;
-        setDailyClaimReady(lastClaim < todayStart);
-      } else {
-        // Фолбэк при ошибке сети
-        console.warn('Wallet fetch failed:', walletRes.status === 'rejected' ? walletRes.reason : 'No data');
-        setBalance(0);
+      if (wRes.status === 'fulfilled' && wRes.value.data) {
+        setBalance(wRes.value.data.balance || 0);
+        const today = new Date().setHours(0,0,0,0);
+        const last = wRes.value.data.last_daily_claim ? new Date(wRes.value.data.last_daily_claim).setHours(0,0,0,0) : 0;
+        setDailyClaimReady(last < today);
       }
 
-      // 📜 Обработка истории
-      if (historyRes.status === 'fulfilled' && historyRes.value.data) {
-        setHistory(historyRes.value.data);
-      } else {
-        console.warn('History fetch failed:', historyRes.status === 'rejected' ? historyRes.reason : 'No data');
-        setHistory([]);
+      if (hRes.status === 'fulfilled' && hRes.value.data) {
+        setHistory(hRes.value.data);
       }
-
-    } catch (err: any) {
-      console.error('useWallet critical error:', err);
-      setError('Не удалось загрузить данные кошелька');
-      setBalance(0);
-      setHistory([]);
+    } catch (e) {
+      console.error('[Wallet] Fetch error:', e);
     } finally {
-      // ✅ ГАРАНТИРОВАННО выключаем спиннер, даже при ошибке или отмене запроса
       setLoading(false);
     }
   }, [user]);
 
-  // Загружаем данные при монтировании или смене пользователя
-  useEffect(() => {
-    fetchWallet();
-  }, [fetchWallet]);
+  useEffect(() => { fetchWallet(); }, [fetchWallet]);
 
-  // Функция получения ежедневного бонуса
-  const claimBonus = useCallback(async () => {
+  const claimBonus = async () => {
     if (!user) return false;
-    
     try {
       const { error } = await supabase.rpc('claim_daily_bonus', { target_user_id: user.id });
       if (error) throw error;
-      
-      // После успеха обновляем данные
       await fetchWallet();
       return true;
-    } catch (err: any) {
-      console.error('Claim bonus error:', err);
-      alert(err.message || 'Не удалось получить бонус. Попробуйте позже.');
+    } catch (e: any) {
+      alert(e.message || 'Ошибка бонуса');
       return false;
     }
-  }, [user, fetchWallet]);
-
-  return {
-    balance,
-    history,
-    loading,
-    error,
-    dailyClaimReady,
-    claimBonus,
-    refresh: fetchWallet
   };
+
+  return { balance, history, loading: loading || authLoading, dailyClaimReady, claimBonus, refresh: fetchWallet };
 };

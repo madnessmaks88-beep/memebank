@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import bridge from '@vkontakte/vk-bridge'; // ✅ Официальный импорт
+import bridge from '@vkontakte/vk-bridge';
 
-interface VKUser {
+export interface VKUser {
   id: number;
   first_name: string;
   last_name: string;
@@ -12,34 +12,31 @@ interface VKUser {
 export const useVKAuth = () => {
   const [user, setUser] = useState<VKUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let isMounted = true;
+    let mounted = true;
 
-    const initAuth = async () => {
+    const init = async () => {
       try {
-        console.log('[VKAuth] Инициализация bridge...');
+        // 1. Инициализируем VK Bridge
         await bridge.send('VKWebAppInit');
-        console.log('[VKAuth] Bridge готов.');
-
-        const userInfo = await bridge.send('VKWebAppGetUserInfo');
-        console.log('[VKAuth] Данные пользователя:', userInfo);
-
-        if (isMounted) {
+        
+        // 2. Получаем данные пользователя
+        const info = await bridge.send('VKWebAppGetUserInfo');
+        
+        if (mounted) {
           setUser({
-            id: userInfo.id,
-            first_name: userInfo.first_name || 'User',
-            last_name: userInfo.last_name || '',
-            photo_100: userInfo.photo_100 || '',
-            photo_200: userInfo.photo_200 || '',
+            id: info.id,
+            first_name: info.first_name || 'User',
+            last_name: info.last_name || '',
+            photo_100: info.photo_100 || '',
+            photo_200: info.photo_200 || '',
           });
         }
-      } catch (err: any) {
-        console.error('[VKAuth] Ошибка инициализации:', err);
-        if (isMounted) {
-          setError(err.message);
-          // 🛡 Фолбэк для тестирования вне ВК или при сбое bridge
+      } catch (e) {
+        console.warn('[VKAuth] Bridge init failed, using fallback:', e);
+        if (mounted) {
+          // Фолбэк для отладки вне ВК или при сбое
           setUser({
             id: 1,
             first_name: 'Тест',
@@ -49,13 +46,13 @@ export const useVKAuth = () => {
           });
         }
       } finally {
-        if (isMounted) setLoading(false);
+        if (mounted) setLoading(false);
       }
     };
 
-    initAuth();
-    return () => { isMounted = false; };
+    init();
+    return () => { mounted = false; };
   }, []);
 
-  return { user, loading, error };
+  return { user, loading };
 };

@@ -25,78 +25,73 @@ interface MemeCardProps {
 }
 
 // ✅ Мемоизированная карточка: не перерисовывается при изменении других мемов
-const MemeCard = memo(({ meme, reaction, onReaction, onCopy, onShare }: MemeCardProps) => {
-  const [imageError, setImageError] = useState(false);
-
-  return (
-    <div style={{ marginBottom: 20, background: '#18181b', borderRadius: 20, overflow: 'hidden', border: '1px solid #27272a' }}>
-      <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
-        <Avatar size={36} src={meme.author_avatar || `https://placehold.co/36/00E5FF/000?text=${meme.author.charAt(0).toUpperCase()}`} />
-        <div style={{ flex: 1 }}>
-          <div style={{ color: '#f4f4f5', fontWeight: 600, fontSize: 15 }}>{meme.title}</div>
-          <div style={{ color: '#71717a', fontSize: 12 }}>@{meme.author}</div>
-        </div>
-        <div style={{ background: '#27272a', padding: '4px 8px', borderRadius: 8, color: '#FFB800', fontSize: 12 }}>💰 +{meme.coins_earned}</div>
+const MemeCard = memo(({ meme, reaction, onReaction, onCopy, onShare }: MemeCardProps) => (
+  <div style={{ marginBottom: 20, background: '#18181b', borderRadius: 20, overflow: 'hidden', border: '1px solid #27272a' }}>
+    <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
+      <Avatar size={36} src={meme.author_avatar || `https://placehold.co/36/00E5FF/000?text=${meme.author.charAt(0).toUpperCase()}`} />
+      <div style={{ flex: 1 }}>
+        <div style={{ color: '#f4f4f5', fontWeight: 600, fontSize: 15 }}>{meme.title}</div>
+        <div style={{ color: '#71717a', fontSize: 12 }}>@{meme.author}</div>
       </div>
+      <div style={{ background: '#27272a', padding: '4px 8px', borderRadius: 8, color: '#FFB800', fontSize: 12 }}>💰 +{meme.coins_earned}</div>
+    </div>
 
-      <div style={{ width: '100%', aspectRatio: '9/16', background: '#0f0f11', position: 'relative' }}>
-        {imageError ? (
-          <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', color: '#71717a', fontSize: 14 }}>
-            📷 Ошибка загрузки
-          </div>
-        ) : (
-          <img
-            src={meme.image_url}
-            alt={meme.title}
-            loading="lazy"
-            decoding="async"
-            onError={() => setImageError(true)}
-            style={{ 
-              width: '100%', 
-              height: '100%', 
-              objectFit: 'contain', 
-              display: 'block',
-              WebkitBackfaceVisibility: 'hidden',
-              backfaceVisibility: 'hidden',
-              transform: 'translateZ(0)'
-            }}
-          />
-        )}
+    <div style={{ width: '100%', aspectRatio: '9/16', background: '#0f0f11' }}>
+      <img
+        src={meme.image_url}
+        alt={meme.title}
+        loading="lazy"
+        decoding="async"
+        crossOrigin="anonymous"
+        referrerPolicy="no-referrer"
+        // ✅ Прямая подмена битой картинки без лишнего стейта
+        onError={(e) => { 
+          (e.target as HTMLImageElement).src = 'https://placehold.co/400x700/18181b/71717a?text=Нет+фото'; 
+        }}
+        style={{ 
+          width: '100%', 
+          height: '100%', 
+          objectFit: 'contain', 
+          display: 'block',
+          WebkitBackfaceVisibility: 'hidden',
+          backfaceVisibility: 'hidden',
+          transform: 'translateZ(0)'
+        }}
+      />
+    </div>
+
+    <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', gap: 10 }}>
+        <Button
+          mode="tertiary"
+          size="l"
+          before={reaction.liked ? <Icon28Favorite /> : <Icon28FavoriteOutline />}
+          onClick={() => onReaction(meme.id, 'like')}
+          style={{ flex: 1, background: reaction.liked ? 'rgba(255,61,113,0.15)' : '#27272a', color: reaction.liked ? '#FF3D71' : '#e4e4e7' }}
+        >
+          {meme.likes_count}
+        </Button>
+        <Button
+          mode="tertiary"
+          size="l"
+          before={<Icon28BookmarkOutline />}
+          onClick={() => onReaction(meme.id, 'save')}
+          style={{ flex: 1, background: reaction.saved ? 'rgba(0,229,255,0.15)' : '#27272a', color: reaction.saved ? '#00E5FF' : '#e4e4e7' }}
+        >
+          {meme.saves_count}
+        </Button>
       </div>
-
-      <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <Button
-            mode="tertiary"
-            size="l"
-            before={reaction.liked ? <Icon28Favorite /> : <Icon28FavoriteOutline />}
-            onClick={() => onReaction(meme.id, 'like')}
-            style={{ flex: 1, background: reaction.liked ? 'rgba(255,61,113,0.15)' : '#27272a', color: reaction.liked ? '#FF3D71' : '#e4e4e7' }}
-          >
-            {meme.likes_count}
-          </Button>
-          <Button
-            mode="tertiary"
-            size="l"
-            before={<Icon28BookmarkOutline />}
-            onClick={() => onReaction(meme.id, 'save')}
-            style={{ flex: 1, background: reaction.saved ? 'rgba(0,229,255,0.15)' : '#27272a', color: reaction.saved ? '#00E5FF' : '#e4e4e7' }}
-          >
-            {meme.saves_count}
-          </Button>
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Button mode="secondary" size="m" before={<Icon28CopyOutline />} onClick={() => onCopy(`${meme.title} | @${meme.author}`)} style={{ flex: 1 }}>
-            Копировать
-          </Button>
-          <Button mode="secondary" size="m" before={<Icon28SendOutline />} onClick={() => onShare(meme.image_url)} style={{ flex: 1 }}>
-            Поделиться
-          </Button>
-        </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <Button mode="secondary" size="m" before={<Icon28CopyOutline />} onClick={() => onCopy(`${meme.title} | @${meme.author}`)} style={{ flex: 1 }}>
+          Копировать
+        </Button>
+        <Button mode="secondary" size="m" before={<Icon28SendOutline />} onClick={() => onShare(meme.image_url)} style={{ flex: 1 }}>
+          Поделиться
+        </Button>
       </div>
     </div>
-  );
-});
+  </div>
+));
 MemeCard.displayName = 'MemeCard';
 
 const ITEMS_PER_PAGE = 15;
