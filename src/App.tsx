@@ -1,35 +1,30 @@
 import React, { useState } from 'react';
-import { AppRoot, View, Panel, SplitCol, Group } from '@vkontakte/vkui';
-import { Icon28HomeOutline, Icon28AddCircleOutline, Icon28CoinsOutline, Icon28UserOutline } from '@vkontakte/icons';
+import { AppRoot } from '@vkontakte/vkui';
 import { useVKAuth } from './hooks/useVKAuth';
-import { Feed } from './pages/Feed';
-import { Upload } from './pages/Upload';
-import { Wallet } from './pages/Wallet';
-import { Profile } from './pages/Profile';
 
 export const App: React.FC = () => {
-  const { loading, error } = useVKAuth();
+  const { loading, error, user } = useVKAuth();
   const [activePanel, setActivePanel] = useState('feed');
 
-  if (loading) {
+  console.log('[App] State:', { loading, error, user, activePanel });
+
+  if (error) {
     return (
       <AppRoot>
-        <div style={{ background: '#0B0B0F', minHeight: '100vh', display: 'grid', placeItems: 'center', color: '#fff' }}>
-          <div>⏳ Загрузка...</div>
+        <div style={{ padding: 40, background: '#000', color: '#fff' }}>
+          <h2>❌ Ошибка VK Bridge</h2>
+          <p style={{ color: '#ff6b6b' }}>{error}</p>
         </div>
       </AppRoot>
     );
   }
 
-  if (error) {
+  if (loading) {
     return (
       <AppRoot>
-        <div style={{ background: '#0B0B0F', color: '#fff', padding: 40, textAlign: 'center', minHeight: '100vh' }}>
-          <h3>⚠️ Ошибка</h3>
-          <p>{error}</p>
-          <button onClick={() => window.location.reload()} style={{ marginTop: 20, padding: '10px 20px', background: '#00E5FF', border: 'none', borderRadius: 8 }}>
-            🔄 Обновить
-          </button>
+        <div style={{ padding: 60, background: '#0B0B0F', color: '#fff', textAlign: 'center' }}>
+          <h2>⏳ Инициализация...</h2>
+          <p>Загрузка VK Bridge</p>
         </div>
       </AppRoot>
     );
@@ -37,65 +32,23 @@ export const App: React.FC = () => {
 
   return (
     <AppRoot>
-      <SplitCol>
-        <View activePanel={activePanel}>
-          
-          <Panel id="feed">
-            <Group style={{ padding: 0 }}>
-              <Feed />
-            </Group>
-          </Panel>
-
-          <Panel id="upload">
-            <Group style={{ padding: 0 }}>
-              <Upload />
-            </Group>
-          </Panel>
-
-          <Panel id="wallet">
-            <Group style={{ padding: 0 }}>
-              <Wallet />
-            </Group>
-          </Panel>
-
-          <Panel id="profile">
-            <Group style={{ padding: 0 }}>
-              <Profile />
-            </Group>
-          </Panel>
-
-        </View>
-      </SplitCol>
-
-      <div style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: '60px',
-        background: '#18181b',
-        borderTop: '1px solid #27272a',
-        display: 'flex',
-        justifyContent: 'space-around',
-        alignItems: 'center',
-        zIndex: 1000,
-        paddingBottom: 'env(safe-area-inset-bottom)'
-      }}>
-        <div onClick={() => setActivePanel('feed')} style={{ textAlign: 'center', color: activePanel === 'feed' ? '#00E5FF' : '#71717a', cursor: 'pointer', width: '25%', userSelect: 'none' }}>
-          <Icon28HomeOutline width={28} height={28} />
-          <div style={{ fontSize: 10, marginTop: 2, fontWeight: 500 }}>Лента</div>
+      <div style={{ padding: 20, background: '#0B0B0F', color: '#fff', minHeight: '100vh' }}>
+        <h1>✅ VK Bridge работает!</h1>
+        <p>Пользователь: {user?.first_name} {user?.last_name}</p>
+        <p>Active panel: {activePanel}</p>
+        
+        <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+          <button onClick={() => setActivePanel('feed')} style={{ flex: 1, padding: 10 }}>Лента</button>
+          <button onClick={() => setActivePanel('upload')} style={{ flex: 1, padding: 10 }}>Загрузить</button>
+          <button onClick={() => setActivePanel('wallet')} style={{ flex: 1, padding: 10 }}>Кошелёк</button>
+          <button onClick={() => setActivePanel('profile')} style={{ flex: 1, padding: 10 }}>Профиль</button>
         </div>
-        <div onClick={() => setActivePanel('upload')} style={{ textAlign: 'center', color: activePanel === 'upload' ? '#00E5FF' : '#71717a', cursor: 'pointer', width: '25%', userSelect: 'none' }}>
-          <Icon28AddCircleOutline width={28} height={28} />
-          <div style={{ fontSize: 10, marginTop: 2, fontWeight: 500 }}>Загрузить</div>
-        </div>
-        <div onClick={() => setActivePanel('wallet')} style={{ textAlign: 'center', color: activePanel === 'wallet' ? '#00E5FF' : '#71717a', cursor: 'pointer', width: '25%', userSelect: 'none' }}>
-          <Icon28CoinsOutline width={28} height={28} />
-          <div style={{ fontSize: 10, marginTop: 2, fontWeight: 500 }}>Кошелёк</div>
-        </div>
-        <div onClick={() => setActivePanel('profile')} style={{ textAlign: 'center', color: activePanel === 'profile' ? '#00E5FF' : '#71717a', cursor: 'pointer', width: '25%', userSelect: 'none' }}>
-          <Icon28UserOutline width={28} height={28} />
-          <div style={{ fontSize: 10, marginTop: 2, fontWeight: 500 }}>Профиль</div>
+
+        <div style={{ marginTop: 30, padding: 20, background: '#18181b', borderRadius: 12 }}>
+          <h3>📊 Диагностика:</h3>
+          <pre style={{ fontSize: 12, color: '#aaa' }}>
+            {JSON.stringify({ user, activePanel }, null, 2)}
+          </pre>
         </div>
       </div>
     </AppRoot>
