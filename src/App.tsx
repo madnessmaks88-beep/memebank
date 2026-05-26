@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { AppRoot } from '@vkontakte/vkui';
+import { AppRoot, View, Panel, SplitCol, Group } from '@vkontakte/vkui';
+import { Icon28HomeOutline, Icon28AddCircleOutline, Icon28CoinsOutline, Icon28UserOutline } from '@vkontakte/icons';
 import { useVKAuth } from './hooks/useVKAuth';
 import { Feed } from './pages/Feed';
 import { Upload } from './pages/Upload';
 import { Wallet } from './pages/Wallet';
+import { Profile } from './pages/Profile';
 
 export const App: React.FC = () => {
   const { loading, error } = useVKAuth();
@@ -35,18 +37,37 @@ export const App: React.FC = () => {
 
   return (
     <AppRoot>
-      {/* Основной контент */}
-      <div style={{ 
-        background: '#0B0B0F', 
-        minHeight: '100vh', 
-        paddingBottom: '70px' // Место под меню
-      }}>
-        {activePanel === 'feed' && <Feed />}
-        {activePanel === 'upload' && <Upload />}
-        {activePanel === 'wallet' && <Wallet />}
-      </div>
+      <SplitCol>
+        <View activePanel={activePanel}>
+          
+          <Panel id="feed">
+            <Group style={{ padding: 0 }}>
+              <Feed />
+            </Group>
+          </Panel>
 
-      {/* Нижнее меню */}
+          <Panel id="upload">
+            <Group style={{ padding: 0 }}>
+              <Upload />
+            </Group>
+          </Panel>
+
+          <Panel id="wallet">
+            <Group style={{ padding: 0 }}>
+              <Wallet />
+            </Group>
+          </Panel>
+
+          <Panel id="profile">
+            <Group style={{ padding: 0 }}>
+              <Profile />
+            </Group>
+          </Panel>
+
+        </View>
+      </SplitCol>
+
+      {/* Нижнее меню с 4 вкладками */}
       <div style={{
         position: 'fixed',
         bottom: 0,
@@ -61,17 +82,21 @@ export const App: React.FC = () => {
         zIndex: 1000,
         paddingBottom: 'env(safe-area-inset-bottom)'
       }}>
-        <div onClick={() => setActivePanel('feed')} style={{ textAlign: 'center', color: activePanel === 'feed' ? '#00E5FF' : '#71717a', cursor: 'pointer', width: '33%' }}>
-          <div style={{ fontSize: 24 }}>🏠</div>
-          <div style={{ fontSize: 10 }}>Лента</div>
+        <div onClick={() => setActivePanel('feed')} style={{ textAlign: 'center', color: activePanel === 'feed' ? '#00E5FF' : '#71717a', cursor: 'pointer', width: '25%', userSelect: 'none' }}>
+          <Icon28HomeOutline width={28} height={28} />
+          <div style={{ fontSize: 10, marginTop: 2, fontWeight: 500 }}>Лента</div>
         </div>
-        <div onClick={() => setActivePanel('upload')} style={{ textAlign: 'center', color: activePanel === 'upload' ? '#00E5FF' : '#71717a', cursor: 'pointer', width: '33%' }}>
-          <div style={{ fontSize: 24 }}>➕</div>
-          <div style={{ fontSize: 10 }}>Загрузить</div>
+        <div onClick={() => setActivePanel('upload')} style={{ textAlign: 'center', color: activePanel === 'upload' ? '#00E5FF' : '#71717a', cursor: 'pointer', width: '25%', userSelect: 'none' }}>
+          <Icon28AddCircleOutline width={28} height={28} />
+          <div style={{ fontSize: 10, marginTop: 2, fontWeight: 500 }}>Загрузить</div>
         </div>
-        <div onClick={() => setActivePanel('wallet')} style={{ textAlign: 'center', color: activePanel === 'wallet' ? '#00E5FF' : '#71717a', cursor: 'pointer', width: '33%' }}>
-          <div style={{ fontSize: 24 }}>💰</div>
-          <div style={{ fontSize: 10 }}>Кошелёк</div>
+        <div onClick={() => setActivePanel('wallet')} style={{ textAlign: 'center', color: activePanel === 'wallet' ? '#00E5FF' : '#71717a', cursor: 'pointer', width: '25%', userSelect: 'none' }}>
+          <Icon28CoinsOutline width={28} height={28} />
+          <div style={{ fontSize: 10, marginTop: 2, fontWeight: 500 }}>Кошелёк</div>
+        </div>
+        <div onClick={() => setActivePanel('profile')} style={{ textAlign: 'center', color: activePanel === 'profile' ? '#00E5FF' : '#71717a', cursor: 'pointer', width: '25%', userSelect: 'none' }}>
+          <Icon28UserOutline width={28} height={28} />
+          <div style={{ fontSize: 10, marginTop: 2, fontWeight: 500 }}>Профиль</div>
         </div>
       </div>
     </AppRoot>
