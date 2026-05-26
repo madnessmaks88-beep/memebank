@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import bridge from '@vkontakte/vk-bridge';
+import bridge from '@vkontakte/vk-bridge'; // ✅ Правильный импорт
 
 export interface VKUser {
   id: number;
@@ -12,31 +12,40 @@ export interface VKUser {
 export const useVKAuth = () => {
   const [user, setUser] = useState<VKUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let mounted = true;
+    let isMounted = true;
 
-    const init = async () => {
+    const initApp = async () => {
       try {
-        // 1. Инициализируем VK Bridge
+        console.log('[VKAuth] Начинаем инициализацию...');
+        
+        // 1. Сначала инициализируем мост
         await bridge.send('VKWebAppInit');
+        console.log('[VKAuth] Мост инициализирован!');
+
+        // 2. Только потом просим данные пользователя
+        const userInfo = await bridge.send('VKWebAppGetUserInfo');
         
-        // 2. Получаем данные пользователя
-        const info = await bridge.send('VKWebAppGetUserInfo');
-        
-        if (mounted) {
+        if (isMounted) {
           setUser({
-            id: info.id,
-            first_name: info.first_name || 'User',
-            last_name: info.last_name || '',
-            photo_100: info.photo_100 || '',
-            photo_200: info.photo_200 || '',
+            id: userInfo.id,
+            first_name: userInfo.first_name || 'User',
+            last_name: userInfo.last_name || '',
+            photo_100: userInfo.photo_100 || '',
+            photo_200: userInfo.photo_200 || '',
           });
+          setError(null);
         }
-      } catch (e) {
-        console.warn('[VKAuth] Bridge init failed, using fallback:', e);
-        if (mounted) {
-          // Фолбэк для отладки вне ВК или при сбое
+      } catch (err) {
+        console.error('[VKAuth] Ошибка инициализации:', err);
+        if (isMounted) {
+          // Если мы не внутри ВК или сеть упала
+          setError('Приложение не инициализировано. Откройте ссылку внутри ВКонтакте.');
+          
+          // Фолбэк для тестов вне ВК (чтобы ты мог проверить верстку на ПК)
+          // Если хочешь строгую проверку — удали блок setUser ниже
           setUser({
             id: 1,
             first_name: 'Тест',
@@ -46,13 +55,21 @@ export const useVKAuth = () => {
           });
         }
       } finally {
-        if (mounted) setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
-    init();
-    return () => { mounted = false; };
+    initApp();
+    return () => { isMounted = false; };
   }, []);
 
-  return { user, loading };
+  // Функция для ручной перезагрузки при ошибке
+  const retryInit = () => {
+    setLoading(true);
+    setError(null);
+    // Сбрасываем стейт и запускаем заново (через изменение ключа или просто вызов)
+    window.location.reload(); 
+  };
+
+  return { user, loading, error, retryInit };
 };
