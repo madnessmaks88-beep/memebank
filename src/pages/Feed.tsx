@@ -24,59 +24,79 @@ interface MemeCardProps {
   onShare: (url: string) => void;
 }
 
-const MemeCard = memo(({ meme, reaction, onReaction, onCopy, onShare }: MemeCardProps) => (
-  <div style={{ marginBottom: 20, background: '#18181b', borderRadius: 20, overflow: 'hidden', border: '1px solid #27272a' }}>
-    <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
-      <Avatar size={36} src={meme.author_avatar || `https://placehold.co/36/00E5FF/000?text=${meme.author.charAt(0).toUpperCase()}`} />
-      <div style={{ flex: 1 }}>
-        <div style={{ color: '#f4f4f5', fontWeight: 600, fontSize: 15 }}>{meme.title}</div>
-        <div style={{ color: '#71717a', fontSize: 12 }}>@{meme.author}</div>
-      </div>
-      <div style={{ background: '#27272a', padding: '4px 8px', borderRadius: 8, color: '#FFB800', fontSize: 12 }}>💰 +{meme.coins_earned}</div>
-    </div>
+// ✅ Мемоизированная карточка: не перерисовывается при изменении других мемов
+const MemeCard = memo(({ meme, reaction, onReaction, onCopy, onShare }: MemeCardProps) => {
+  const [imageError, setImageError] = useState(false);
 
-    <div style={{ width: '100%', aspectRatio: '9/16', background: '#0f0f11' }}>
-      <img
-        src={meme.image_url}
-        alt={meme.title}
-        loading="lazy"
-        decoding="async"
-        style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
-      />
-    </div>
+  return (
+    <div style={{ marginBottom: 20, background: '#18181b', borderRadius: 20, overflow: 'hidden', border: '1px solid #27272a' }}>
+      <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <Avatar size={36} src={meme.author_avatar || `https://placehold.co/36/00E5FF/000?text=${meme.author.charAt(0).toUpperCase()}`} />
+        <div style={{ flex: 1 }}>
+          <div style={{ color: '#f4f4f5', fontWeight: 600, fontSize: 15 }}>{meme.title}</div>
+          <div style={{ color: '#71717a', fontSize: 12 }}>@{meme.author}</div>
+        </div>
+        <div style={{ background: '#27272a', padding: '4px 8px', borderRadius: 8, color: '#FFB800', fontSize: 12 }}>💰 +{meme.coins_earned}</div>
+      </div>
 
-    <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ display: 'flex', gap: 10 }}>
-        <Button
-          mode="tertiary"
-          size="l"
-          before={reaction.liked ? <Icon28Favorite /> : <Icon28FavoriteOutline />}
-          onClick={() => onReaction(meme.id, 'like')}
-          style={{ flex: 1, background: reaction.liked ? 'rgba(255,61,113,0.15)' : '#27272a', color: reaction.liked ? '#FF3D71' : '#e4e4e7' }}
-        >
-          {meme.likes_count}
-        </Button>
-        <Button
-          mode="tertiary"
-          size="l"
-          before={<Icon28BookmarkOutline />}
-          onClick={() => onReaction(meme.id, 'save')}
-          style={{ flex: 1, background: reaction.saved ? 'rgba(0,229,255,0.15)' : '#27272a', color: reaction.saved ? '#00E5FF' : '#e4e4e7' }}
-        >
-          {meme.saves_count}
-        </Button>
+      <div style={{ width: '100%', aspectRatio: '9/16', background: '#0f0f11', position: 'relative' }}>
+        {imageError ? (
+          <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', color: '#71717a', fontSize: 14 }}>
+            📷 Ошибка загрузки
+          </div>
+        ) : (
+          <img
+            src={meme.image_url}
+            alt={meme.title}
+            loading="lazy"
+            decoding="async"
+            onError={() => setImageError(true)}
+            style={{ 
+              width: '100%', 
+              height: '100%', 
+              objectFit: 'contain', 
+              display: 'block',
+              WebkitBackfaceVisibility: 'hidden',
+              backfaceVisibility: 'hidden',
+              transform: 'translateZ(0)'
+            }}
+          />
+        )}
       </div>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <Button mode="secondary" size="m" before={<Icon28CopyOutline />} onClick={() => onCopy(`${meme.title} | @${meme.author}`)} style={{ flex: 1 }}>
-          Копировать
-        </Button>
-        <Button mode="secondary" size="m" before={<Icon28SendOutline />} onClick={() => onShare(meme.image_url)} style={{ flex: 1 }}>
-          Поделиться
-        </Button>
+
+      <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <Button
+            mode="tertiary"
+            size="l"
+            before={reaction.liked ? <Icon28Favorite /> : <Icon28FavoriteOutline />}
+            onClick={() => onReaction(meme.id, 'like')}
+            style={{ flex: 1, background: reaction.liked ? 'rgba(255,61,113,0.15)' : '#27272a', color: reaction.liked ? '#FF3D71' : '#e4e4e7' }}
+          >
+            {meme.likes_count}
+          </Button>
+          <Button
+            mode="tertiary"
+            size="l"
+            before={<Icon28BookmarkOutline />}
+            onClick={() => onReaction(meme.id, 'save')}
+            style={{ flex: 1, background: reaction.saved ? 'rgba(0,229,255,0.15)' : '#27272a', color: reaction.saved ? '#00E5FF' : '#e4e4e7' }}
+          >
+            {meme.saves_count}
+          </Button>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button mode="secondary" size="m" before={<Icon28CopyOutline />} onClick={() => onCopy(`${meme.title} | @${meme.author}`)} style={{ flex: 1 }}>
+            Копировать
+          </Button>
+          <Button mode="secondary" size="m" before={<Icon28SendOutline />} onClick={() => onShare(meme.image_url)} style={{ flex: 1 }}>
+            Поделиться
+          </Button>
+        </div>
       </div>
     </div>
-  </div>
-));
+  );
+});
 MemeCard.displayName = 'MemeCard';
 
 const ITEMS_PER_PAGE = 15;
@@ -90,7 +110,8 @@ export const Feed: React.FC = () => {
   const [userReactions, setUserReactions] = useState<Record<string, { liked: boolean; saved: boolean }>>({});
 
   const { copyToClipboard, openLink } = useVKBridge();
-  const { user } = useVKAuth();
+  const { user } = useVKAuth(); // ✅ Получаем пользователя
+  
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
@@ -108,10 +129,10 @@ export const Feed: React.FC = () => {
     );
 
     if (loadMoreRef.current) observerRef.current.observe(loadMoreRef.current);
-
     return () => observerRef.current?.disconnect();
   }, [hasMore, loadingMore, memes.length]);
 
+  // ✅ Загрузка мемов с пагинацией
   const fetchMemes = useCallback(async (reset = false) => {
     if (reset) {
       setLoading(true);
@@ -124,20 +145,13 @@ export const Feed: React.FC = () => {
     const to = from + ITEMS_PER_PAGE - 1;
 
     try {
-      console.log('[Feed] Запрос мемов:', { from, to, reset });
-      
       const { data, error: fetchError } = await supabase
         .from('memes_with_stats')
         .select()
         .order('created_at', { ascending: false })
         .range(from, to);
 
-      if (fetchError) {
-        console.error('[Feed] Ошибка Supabase:', fetchError);
-        throw fetchError;
-      }
-
-      console.log('[Feed] Получено данных:', data?.length);
+      if (fetchError) throw fetchError;
 
       if (data) {
         const typed = data as MemeStats[];
@@ -146,35 +160,19 @@ export const Feed: React.FC = () => {
         setError(null);
       }
     } catch (err: any) {
-      console.error('[Feed] Critical error:', err);
+      console.error('[Feed] Ошибка загрузки:', err);
       setError(err.message || 'Не удалось загрузить ленту');
-      // При ошибке не очищаем существующие мемы
-      if (reset) {
-        setMemes([]);
-      }
+      if (reset) setMemes([]);
     } finally {
-      // ✅ ВСЕГДА сбрасываем loading
-      console.log('[Feed] finally: сброс loading');
+      // ✅ Гарантированный сброс состояния загрузки
       setLoading(false);
       setLoadingMore(false);
     }
   }, [memes.length]);
 
-  // Initial load
-  useEffect(() => {
-    console.log('[Feed] Initial load, user:', user);
-    fetchMemes(true);
-  }, []);
-
-  // Load reactions when user changes
-  useEffect(() => {
-    if (user && memes.length > 0) {
-      fetchUserReactions();
-    }
-  }, [user, memes.length]);
-
-  const fetchUserReactions = async () => {
-    if (!user) return;
+  // ✅ Загрузка реакций пользователя
+  const fetchUserReactions = useCallback(async () => {
+    if (!user || memes.length === 0) return;
     try {
       const { data } = await supabase
         .from('reactions')
@@ -191,23 +189,30 @@ export const Feed: React.FC = () => {
         setUserReactions(map);
       }
     } catch (err) {
-      console.error('[Feed] Error loading reactions:', err);
+      console.error('[Feed] Ошибка загрузки реакций:', err);
     }
-  };
+  }, [user, memes]);
 
+  // ✅ Инициализация
+  useEffect(() => { fetchMemes(true); }, []);
+  useEffect(() => { fetchUserReactions(); }, [user, memes.length]);
+
+  // ✅ Обработка лайков/сохранений (Optimistic UI)
   const handleReaction = async (memeId: string, type: 'like' | 'save') => {
     if (!user) return alert('Войдите, чтобы оценивать мемы!');
+    
     const current = userReactions[memeId] || { liked: false, saved: false };
     const stateKey = type === 'like' ? 'liked' : 'saved';
     const isAdding = !current[stateKey];
+    const countKey = type === 'like' ? 'likes_count' : 'saves_count';
 
+    // 1. Оптимистичное обновление UI
     setUserReactions(prev => ({ ...prev, [memeId]: { ...prev[memeId], [stateKey]: isAdding } }));
     setMemes(prev => prev.map(m => 
-      m.id === memeId 
-        ? { ...m, [type === 'like' ? 'likes_count' : 'saves_count']: isAdding ? m[type === 'like' ? 'likes_count' : 'saves_count'] + 1 : Math.max(0, m[type === 'like' ? 'likes_count' : 'saves_count'] - 1) } 
-        : m
+      m.id === memeId ? { ...m, [countKey]: isAdding ? m[countKey] + 1 : Math.max(0, m[countKey] - 1) } : m
     ));
 
+    // 2. Запрос к БД
     try {
       if (isAdding) {
         await supabase.from('reactions').insert({ user_id: user.id, meme_id: memeId, reaction_type: type });
@@ -215,55 +220,46 @@ export const Feed: React.FC = () => {
         await supabase.from('reactions').delete().eq('user_id', user.id).eq('meme_id', memeId).eq('reaction_type', type);
       }
     } catch {
+      // 3. Откат при ошибке сети
       fetchUserReactions();
     }
   };
 
-  const handleRefresh = () => {
-    fetchMemes(true);
+  const handleRefresh = async () => {
+    await fetchMemes(true);
   };
 
-  const handleRetry = () => {
-    console.log('[Feed] Retry clicked');
-    fetchMemes(true);
-  };
+  const handleRetry = () => fetchMemes(true);
 
-  // ✅ Показываем ошибку, если загрузка не удалась
+  // 🖼 UI: Ошибка сети
   if (error && memes.length === 0) {
     return (
-      <Group style={{ padding: 0 }}>
-        <div style={{ padding: 60, textAlign: 'center', background: '#0B0B0F', minHeight: '100vh' }}>
+      <Group style={{ padding: 0, background: '#0B0B0F' }}>
+        <div style={{ padding: 60, textAlign: 'center' }}>
           <div style={{ fontSize: 64, marginBottom: 16 }}>📡</div>
-          <div style={{ color: '#f4f4f5', fontSize: 18, fontWeight: 600, marginBottom: 8 }}>
-            Не удалось загрузить ленту
-          </div>
-          <div style={{ color: '#71717a', fontSize: 14, marginBottom: 24 }}>
-            {error}
-          </div>
-          <Button mode="primary" size="l" onClick={handleRetry}>
-            🔄 Попробовать снова
-          </Button>
+          <div style={{ color: '#f4f4f5', fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Не удалось загрузить ленту</div>
+          <div style={{ color: '#71717a', fontSize: 14, marginBottom: 24 }}>{error}</div>
+          <Button mode="primary" size="l" onClick={handleRetry}> Попробовать снова</Button>
         </div>
       </Group>
     );
   }
 
-  // ✅ Показываем спиннер только при первой загрузке
+  // ⏳ UI: Первая загрузка
   if (loading && memes.length === 0) {
     return (
-      <Group style={{ padding: 0 }}>
-        <div style={{ padding: 60, textAlign: 'center', background: '#0B0B0F', minHeight: '100vh' }}>
+      <Group style={{ padding: 0, background: '#0B0B0F' }}>
+        <div style={{ padding: 60, textAlign: 'center' }}>
           <Spinner size="l" />
-          <div style={{ marginTop: 20, color: '#71717a', fontSize: 14 }}>
-            Загрузка ленты...
-          </div>
+          <div style={{ marginTop: 20, color: '#71717a', fontSize: 14 }}>Загрузка ленты...</div>
         </div>
       </Group>
     );
   }
 
+  // 📜 UI: Основная лента
   return (
-    <Group style={{ padding: 0 }}>
+    <Group style={{ padding: 0, background: '#0B0B0F' }}>
       <PullToRefresh onRefresh={handleRefresh}>
         {memes.length === 0 ? (
           <div style={{ padding: 60, textAlign: 'center', color: '#71717a' }}>
@@ -294,7 +290,7 @@ export const Feed: React.FC = () => {
 
         {!hasMore && memes.length > 0 && (
           <div style={{ textAlign: 'center', padding: '32px 0', color: '#52525b', fontSize: 14 }}>
-             Конец ленты
+             ✨ Конец ленты
           </div>
         )}
       </PullToRefresh>
