@@ -1,72 +1,86 @@
-import React from 'react';
-import { AppRoot } from '@vkontakte/vkui';
+import React, { useState } from 'react';
+import { AppRoot, View, Panel, Spinner, SplitCol } from '@vkontakte/vkui';
+import { Icon28HomeOutline, Icon28AddCircleOutline, Icon28CoinsOutline } from '@vkontakte/icons';
 import { useVKAuth } from './hooks/useVKAuth';
+
+// ✅ Импортируем страницы напрямую (без lazy, для надежности)
+import { Feed } from './pages/Feed';
+import { Upload } from './pages/Upload';
+import { Wallet } from './pages/Wallet';
 
 export const App: React.FC = () => {
   const { loading, error } = useVKAuth();
+  const [activePanel, setActivePanel] = useState('feed');
 
-  if (error) {
-    return (
-      <AppRoot>
-        <div style={{ padding: 40, background: '#000', color: '#fff', minHeight: '100vh' }}>
-          <h2>❌ Ошибка</h2>
-          <p style={{ color: '#ff6b6b' }}>{error}</p>
-          <button onClick={() => window.location.reload()} style={{ marginTop: 20, padding: '12px 24px', background: '#00E5FF', border: 'none', borderRadius: 8, cursor: 'pointer' }}>
-            🔄 Перезагрузить
-          </button>
-        </div>
-      </AppRoot>
-    );
-  }
-
+  //  Если загрузка (VK Bridge)
   if (loading) {
     return (
       <AppRoot>
-        <div style={{ padding: 60, background: '#0B0B0F', color: '#fff', minHeight: '100vh', textAlign: 'center' }}>
-          <div style={{ fontSize: 24, marginBottom: 16 }}>⏳</div>
-          <div>Загрузка...</div>
+        <div style={{ background: '#0B0B0F', minHeight: '100vh', display: 'grid', placeItems: 'center' }}>
+          <Spinner size="l" />
         </div>
       </AppRoot>
     );
   }
 
-  // ✅ Успешная загрузка — показываем простой экран
+  //  Если ошибка
+  if (error) {
+    return (
+      <AppRoot>
+        <div style={{ background: '#0B0B0F', color: '#fff', padding: 40, textAlign: 'center', minHeight: '100vh' }}>
+          <h3>⚠️ Ошибка подключения</h3>
+          <p style={{ color: '#aaa' }}>{error}</p>
+          <button onClick={() => window.location.reload()} style={{ marginTop: 20, padding: '10px 20px', background: '#00E5FF', border: 'none', borderRadius: 8 }}>
+            🔄 Обновить
+          </button>
+        </div>
+      </AppRoot>
+    );
+  }
+
+  // ✅ Успех — показываем приложение
   return (
     <AppRoot>
-      <div style={{ 
-        padding: 20, 
-        background: '#0B0B0F', 
-        color: '#fff',
-        minHeight: '100vh'
+      <SplitCol>
+        <View activePanel={activePanel}>
+          
+          {/* Вкладка: Лента */}
+          <Panel id="feed">
+            <Feed />
+          </Panel>
+
+          {/* Вкладка: Загрузка */}
+          <Panel id="upload">
+            <Upload />
+          </Panel>
+
+          {/* Вкладка: Кошелёк */}
+          <Panel id="wallet">
+            <Wallet />
+          </Panel>
+
+        </View>
+      </SplitCol>
+
+      {/* Кастомное меню (работает железобетонно) */}
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0, height: '60px',
+        background: '#18181b', borderTop: '1px solid #27272a',
+        display: 'flex', justifyContent: 'space-around', alignItems: 'center',
+        zIndex: 1000, paddingBottom: 'env(safe-area-inset-bottom)'
       }}>
-        <h1 style={{ marginBottom: 20 }}>🎉 MemeBank работает!</h1>
-        
-        <div style={{ 
-          padding: 16, 
-          background: '#18181b',
-          borderRadius: 12,
-          border: '1px solid #27272a',
-          marginBottom: 20
-        }}>
-          <p style={{ margin: 0, color: '#00E5FF' }}>✅ VK Bridge подключён</p>
-          <p style={{ margin: '8px 0 0', fontSize: 13, color: '#71717a' }}>
-            Приложение инициализировано успешно.
-          </p>
+        <div onClick={() => setActivePanel('feed')} style={{ textAlign: 'center', color: activePanel === 'feed' ? '#00E5FF' : '#71717a', cursor: 'pointer', width: '33%', userSelect: 'none' }}>
+          <Icon28HomeOutline />
+          <div style={{ fontSize: 10, marginTop: 2, fontWeight: 500 }}>Лента</div>
         </div>
-
-        <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-          <button style={{ flex: 1, padding: 12, background: '#27272a', color: '#fff', border: 'none', borderRadius: 8 }}>
-            Лента
-          </button>
-          <button style={{ flex: 1, padding: 12, background: '#27272a', color: '#fff', border: 'none', borderRadius: 8 }}>
-            Кошелёк
-          </button>
+        <div onClick={() => setActivePanel('upload')} style={{ textAlign: 'center', color: activePanel === 'upload' ? '#00E5FF' : '#71717a', cursor: 'pointer', width: '33%', userSelect: 'none' }}>
+          <Icon28AddCircleOutline />
+          <div style={{ fontSize: 10, marginTop: 2, fontWeight: 500 }}>Загрузить</div>
         </div>
-
-        <p style={{ marginTop: 30, fontSize: 12, color: '#52525b' }}>
-          Если ты видишь этот экран — React и VKUI работают. 
-          Проблема была в компонентах Feed/Wallet/Upload.
-        </p>
+        <div onClick={() => setActivePanel('wallet')} style={{ textAlign: 'center', color: activePanel === 'wallet' ? '#00E5FF' : '#71717a', cursor: 'pointer', width: '33%', userSelect: 'none' }}>
+          <Icon28CoinsOutline />
+          <div style={{ fontSize: 10, marginTop: 2, fontWeight: 500 }}>Кошелёк</div>
+        </div>
       </div>
     </AppRoot>
   );
