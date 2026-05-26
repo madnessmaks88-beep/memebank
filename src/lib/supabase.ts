@@ -7,19 +7,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.error('[Supabase] Missing environment variables!');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-    detectSessionInUrl: false,
-  },
-  global: {
-    headers: {
-      'x-application-name': 'memebank',
-      'x-client-platform': 'vk-mini-app',
-    },
-  },
-  db: {
-    schema: 'public',
-  },
-});
+export const supabase = createClient(
+  supabaseUrl || '', 
+  supabaseAnonKey || ''
+);

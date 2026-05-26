@@ -67,7 +67,6 @@ export const App: React.FC = () => {
         </View>
       </SplitCol>
 
-      {/* Нижнее меню с 4 вкладками */}
       <div style={{
         position: 'fixed',
         bottom: 0,
